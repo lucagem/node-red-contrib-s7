@@ -70,6 +70,14 @@
 				<label for="node-config-input-name"><i class="fa fa-tag"></i> <span data-i18n="s7.label.name"></span></label>
 				<input type="text" id="node-config-input-name" data-i18n="[placeholder]s7.label.name">
 			</div>
+			<div class="form-row">
+                <label for="node-config-input-plc-enabled"><i class="fa fa-power-off"></i> <span data-i18n="s7.endpoint.label.plc_enabled">PLC Enabled (Env Var)</span></label>
+                <input type="text" id="node-config-input-plc-enabled" data-i18n="[placeholder]s7.endpoint.placeholder.plc_enabled" style="width: 60%" placeholder="{PLC1_ENABLE}">
+            </div>
+            <div class="form-row">
+                <label for="node-config-input-csv-path"><i class="fa fa-file-csv"></i> <span data-i18n="s7.endpoint.label.csv_path">CSV File Path</span></label>
+                <input type="text" id="node-config-input-csv-path" data-i18n="[placeholder]s7.endpoint.placeholder.csv_path" style="width: 60%">
+            </div>
 		</div>
 		<div id="s7-endpoint-tab-variables" style="display:none">
 			<div class="form-row" style="margin-bottom:0;">

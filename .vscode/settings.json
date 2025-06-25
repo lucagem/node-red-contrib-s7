@@ -1,0 +1,10 @@
+{
+  // abilita subito agent mode nel workspace
+  "chat.agent.enabled": true,
+  // fa sì che l’agente possa lanciare i task definiti più sotto
+  "github.copilot.chat.agent.runTasks": true,
+  // per evitare errori di linting su file che non sono javascript o typescript
+  "typescript.validate.enable": false,
+  "javascript.validate.enable": false,
+  "eslint.enable": true,  
+}
