@@ -2,24 +2,40 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Node-RED with S7 contrib",
+            "name": "Debug Node-RED with S7 Module",
             "type": "node",
             "request": "launch",
-            "program": "${workspaceFolder}/node_modules/.bin/node-red",
+            "program": "C:\\Users\\gem\\AppData\\Roaming\\npm\\node_modules\\node-red\\red.js",
             "args": [
                 "--userDir",
-                "${workspaceFolder}/test-flows",
+                "C:\\Users\\gem\\.node-red",
                 "--verbose"
             ],
             "console": "integratedTerminal",
+            "env": {
+                "NODE_ENV": "development",
+                "DEBUG": "*s7*",
+                "PLC1_ENABLE": "true",
+                "CSV_FILE_PATH": "MIX-XL.csv",                
+            },
             "restart": true,
-            "autoAttachChildProcesses": true,
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/**/*.js"
+            ],
             "skipFiles": [
                 "<node_internals>/**"
-            ],
-            "env": {
-                "NODE_ENV": "development"
-            }
+            ]
+        },
+        {
+            "name": "Debug S7 Module Only",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "address": "localhost",
+            "localRoot": "${workspaceFolder}",
+            "remoteRoot": "${workspaceFolder}",
+            "restart": true
         }
     ]
 }

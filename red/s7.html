@@ -71,12 +71,12 @@
 				<input type="text" id="node-config-input-name" data-i18n="[placeholder]s7.label.name">
 			</div>
 			<div class="form-row">
-                <label for="node-config-input-plc-enabled"><i class="fa fa-power-off"></i> <span data-i18n="s7.endpoint.label.plc_enabled">PLC Enabled (Env Var)</span></label>
-                <input type="text" id="node-config-input-plc-enabled" data-i18n="[placeholder]s7.endpoint.placeholder.plc_enabled" style="width: 60%" placeholder="{PLC1_ENABLE}">
+                <label for="node-config-input-plc-enabled"><i class="fa fa-power-off"></i> <span data-i18n="s7.endpoint.label.plc_enabled">PLC Enabled</span></label>
+                <input type="text" id="node-config-input-plc-enabled" data-i18n="[placeholder]s7.endpoint.placeholder.plc_enabled" placeholder="(optional) use false or env_var like {PLC1_ENABLE}">
             </div>
             <div class="form-row">
                 <label for="node-config-input-csv-path"><i class="fa fa-file-csv"></i> <span data-i18n="s7.endpoint.label.csv_path">CSV File Path</span></label>
-                <input type="text" id="node-config-input-csv-path" data-i18n="[placeholder]s7.endpoint.placeholder.csv_path" style="width: 60%">
+                <input type="text" id="node-config-input-csv-path" data-i18n="[placeholder]s7.endpoint.placeholder.csv_path" placeholder="(optional path/filename) or env_var like {CSV_FILE_PATH}">
             </div>
 		</div>
 		<div id="s7-endpoint-tab-variables" style="display:none">
@@ -531,7 +531,7 @@
 	}
 
 	function validateAddressList(list) {
-		for (var i = 0; i < list.length; i++){
+		for (var i = 0; i < list.length; i++) {
 			var elm = list[i];
 			if (!elm.name) return false;
 			if (validateS7Address(elm.addr)) return false;
@@ -556,7 +556,7 @@
 			},
 			address: {
 				value: "",
-				validate: function(v) {return this.transport == 'iso-on-tcp' ? !!v : true}
+				validate: function (v) { return this.transport == 'iso-on-tcp' ? !!v : true }
 			},
 			port: {
 				value: "102",
@@ -592,7 +592,7 @@
 			adapter: {
 				value: "",
 				type: "mpi-s7 adapter",
-				validate: function(v) {return this.transport != "mpi-s7" || !!v }
+				validate: function (v) { return this.transport != "mpi-s7" || !!v }
 			},
 			busaddr: {
 				value: 2
@@ -612,6 +612,12 @@
 					addr: ""
 				}],
 				validate: validateAddressList
+			},
+			plc_enabled: {
+				value: ""
+			},
+			csvPath: {
+				value: ""
 			}
 		},
 		label: function () {
@@ -642,7 +648,7 @@
 			var connTypeList = $('#node-config-input-connmode');
 			var rackSlotRow = $('#node-config-s7-endpoint-mode-rackslot');
 			var tsapRow = $('#node-config-s7-endpoint-mode-tsap');
-			
+
 			var transportList = $('#node-config-input-transport');
 			var transportIsoOnTCPGroup = $('#s7-endpoint-transport-iso-on-tcp');
 			var transportMpiS7Group = $('#s7-endpoint-transport-mpi-s7');
@@ -654,7 +660,7 @@
 			var flashPlcPNBtn = $('#node-config-flash-plc-pn');
 
 			// put a placeholder for mpi-s7 adapter if not installed
-			if (!RED.nodes.getType('mpi-s7 adapter')){
+			if (!RED.nodes.getType('mpi-s7 adapter')) {
 				$('#node-config-input-adapter').hide();
 				$('#s7-endpoint-adapter-placeholder').show();
 			}
@@ -735,13 +741,13 @@
 						if (curTooltip) {
 							curTooltip.setContent(errorText);
 							curTooltip.open();
-						} else if (RED.popover && RED.popover.tooltip){
+						} else if (RED.popover && RED.popover.tooltip) {
 							curTooltip = RED.popover.tooltip(variableAddr, errorText);
 							curTooltip.open();
 						}
 					} else {
 						variableAddr.removeClass('input-error');
-						if(curTooltip) {
+						if (curTooltip) {
 							curTooltip.close();
 							curTooltip.setContent('');
 							//hack to remove the popup, as Node-RED don't offer
@@ -900,6 +906,15 @@
 				transportList.val(self.transport);
 			}
 
+			// Popola i nuovi campi con i valori salvati
+			if (self.plc_enabled !== undefined) {
+				$("#node-config-input-plc-enabled").val(self.plc_enabled);
+			}
+
+			if (self.csvPath !== undefined) {
+				$("#node-config-input-csv-path").val(self.csvPath);
+			}
+			
 			connTypeList.change(function () {
 				if (connTypeList.val() == "rack-slot") {
 					rackSlotRow.show();
@@ -914,9 +929,9 @@
 			});
 			connTypeList.change();
 
-			transportList.change(function() {
+			transportList.change(function () {
 				var curVal = transportList.val();
-				if(curVal == "iso-on-tcp") {
+				if (curVal == "iso-on-tcp") {
 					transportIsoOnTCPGroup.show();
 					transportMpiS7Group.hide();
 				} else if (curVal == "mpi-s7") {
@@ -929,14 +944,14 @@
 			});
 			transportList.change();
 
-			$.getJSON('__node-red-contrib-s7/discover/available/iso-on-tcp', function(data) {
+			$.getJSON('__node-red-contrib-s7/discover/available/iso-on-tcp', function (data) {
 				if (data) {
 					lookupPlcPNBtn.removeClass('disabled');
 				}
 			});
 
 			var lookupPlcPNValue = null;
-			fieldAddressIsoOnTcp.change(function() {
+			fieldAddressIsoOnTcp.change(function () {
 				lookupPlcPNValue = null;
 				flashPlcPNBtn.addClass('disabled');
 			})
@@ -951,8 +966,8 @@
 				$.getJSON('__node-red-contrib-s7/discover/iso-on-tcp', function (data) {
 					console.log("node-red-contrib-s7 discovered PLCs", data)
 
-					var listData = $.map(data, function(val){
-						return { label: val, value: val['IP Address']}
+					var listData = $.map(data, function (val) {
+						return { label: val, value: val['IP Address'] }
 					})
 
 					fieldAddressIsoOnTcp.autocomplete({
@@ -973,14 +988,14 @@
 						},
 						select: function (event, ui) {
 							var elm = ui.item.label
-							
+
 							event.preventDefault();
 							event.stopPropagation();
 							fieldAddressIsoOnTcp.val(elm['IP Address']);
 							fieldAddressIsoOnTcp.change();
 
 
-							if (!fieldName.val()){
+							if (!fieldName.val()) {
 								fieldName.val(elm['Station Name']);
 							}
 
@@ -988,18 +1003,18 @@
 							flashPlcPNBtn.removeClass('disabled');
 						}
 					});
-					
-					fieldAddressIsoOnTcp.focus(function() {
+
+					fieldAddressIsoOnTcp.focus(function () {
 						fieldAddressIsoOnTcp.autocomplete("search", "")
 					});
 					fieldAddressIsoOnTcp.focus();
-				}).always(function() {
+				}).always(function () {
 					iconLookup.removeClass('fa-spinner fa-spin fa-fw').addClass('fa-search');
 					lookupPlcPNBtn.removeClass('disabled');
 				});
 			});
 
-			flashPlcPNBtn.click(function() {
+			flashPlcPNBtn.click(function () {
 				if (flashPlcPNBtn.hasClass('disabled')) return;
 
 				if (!lookupPlcPNValue) {
@@ -1028,6 +1043,9 @@
 				}
 				node.vartable.push(v);
 			});
+
+			node.plc_enabled = $("#node-config-input-plc-enabled").val();
+			node.csvPath = $("#node-config-input-csv-path").val();
 		}
 	});
 </script>

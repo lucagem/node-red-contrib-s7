@@ -32,6 +32,7 @@ function equals(a, b) {
     return false;
 }
 
+
 var MIN_CYCLE_TIME = 50;
 
 var tools = require('../src/tools.js');
@@ -162,12 +163,23 @@ module.exports = function (RED) {
         this.setMaxListeners(0);
 
         // --- PLC_ENABLED logic ---
-        const plcEnabled = (process.env.PLC_ENABLED || config.plc_enabled || '').toString().toLowerCase();
-        if (plcEnabled === 'false' || plcEnabled === '0') {
-            // Non connettere, non dare errori, status offline
-            if (typeof this.emit === 'function') {
-                this.emit('__STATUS__', { status: 'offline' });
-            }
+        const resolvedPlcEnabled = resolveEnvVar(config.plc_enabled, true) || '';
+        const plcEnabled = resolvedPlcEnabled.toString().toLowerCase();
+        const isPLCDisabled = (plcEnabled === 'false' || plcEnabled === '0');
+
+        if (isPLCDisabled) {
+            // Crea endpoint fittizio per evitare errori
+            node.getStatus = function () { return 'offline'; };
+            node.writeVar = function (obj) { obj.done(new Error('PLC disabled')); };
+            node.updateCycleTime = function () { return 'PLC disabled'; };
+            node.doCycle = function () { /* noop */ };
+
+            // Emetti status offline
+            setTimeout(() => {
+                if (typeof node.emit === 'function') {
+                    node.emit('__STATUS__', { status: 'offline' });
+                }
+            }, 100);
             return;
         }
 
@@ -179,7 +191,7 @@ module.exports = function (RED) {
         if (transport === 'mpi-s7') {
 
             node.adapter = RED.nodes.getNode(config.adapter);
-        if (!node.adapter) {
+            if (!node.adapter) {
                 return node.error(RED._("s7.error.missingconfig"));
             }
 
@@ -227,40 +239,64 @@ module.exports = function (RED) {
                 default:
                     node.error(RED._("s7.error.invalidconntype", config));
                     return;
-                }
-            } else {
-                node.error(RED._("s7.error.invalidconntype", config));
+            }
+        } else {
+            node.error(RED._("s7.error.invalidconntype", config));
             return;
         }
 
         // --- CSV tag table logic ---
         let vartable = config.vartable;
-        if (config.csvPath) {
+        const resolvedCsvPath = resolveEnvVar(config.csvPath, '');
+
+        if (resolvedCsvPath) {
             const fs = require('fs');
             const path = require('path');
-            const csvPath = path.resolve(config.csvPath);
+            const csvPath = path.resolve(resolvedCsvPath);
+
+            node.log('Attempting to load CSV from resolved path: ' + csvPath);
+
             if (fs.existsSync(csvPath)) {
                 try {
-                    const csv = fs.readFileSync(csvPath, 'utf8');
-                    // CSV: name,addr per riga
-                    const lines = csv.split(/\r?\n/).filter(line => line.trim());
-                    const tags = lines.map(line => {
-                        const [name, addr] = line.split(',');
-                        return name && addr ? { name: name.trim(), addr: addr.trim() } : null;
-                    }).filter(Boolean);
-                    if (tags.length) {
-                        vartable = tags;
+                    const contents = fs.readFileSync(csvPath, 'utf8');
+                    const lines = contents.split(/[\r\n]+/);
+
+                    if (!lines.length) {
+                        node.error('CSV file is empty. Using config.vartable.');
                     } else {
-                        node.warn('CSV file provided but no valid tags found. Using config.vartable.');
+                        var res = [], i, fields;
+
+                        for (i = 0; i < lines.length; i++) {
+                            lines[i] = lines[i].trim();
+                            if (lines[i] == '') continue;
+
+                            fields = lines[i].split(/[\t;]/);
+
+                            if (fields.length < 2) {
+                                node.error('CSV line must have at least two parameters, address and name. Skipping line: ' + lines[i]);
+                                continue;
+                            }
+                            res.push({
+                                addr: fields[0],
+                                name: fields[1]
+                            });
+                        }
+
+                        if (res.length) {
+                            vartable = res;
+                            node.log('Loaded ' + res.length + ' variables from CSV: ' + csvPath);
+                        } else {
+                            node.error('CSV file provided but no valid tags found. Using config.vartable.');
+                        }
                     }
                 } catch (e) {
-                    node.warn('Error reading CSV: ' + e.message + '. Using config.vartable.');
+                    node.error('Error reading CSV: ' + e.message + '. Using config.vartable.');
                 }
             } else {
-                node.warn('CSV file not found: ' + csvPath + '. Using config.vartable.');
+                node.error('CSV file not found: ' + csvPath + '. Using config.vartable.');
             }
-        }        
-        node._vars = createTranslationTable(vartable);        
+        }
+        node._vars = createTranslationTable(vartable);
 
         node.getStatus = function getStatus() {
             return status;
@@ -393,6 +429,26 @@ module.exports = function (RED) {
             return;
         } else {
             itemGroup.addItems(varKeys);
+        }
+
+        // --- Helper function per risolvere variabili d'ambiente ---
+        function resolveEnvVar(value, defaultValue) {
+            if (!value) return value;
+
+            // Se la stringa inizia con { e finisce con }, è una variabile d'ambiente
+            if (typeof value === 'string' && value.startsWith('{') && value.endsWith('}')) {
+                const envVarName = value.slice(1, -1); // Rimuove { e }
+                const envValue = process.env[envVarName];
+                if (envValue !== undefined) {
+                    node.log('Resolved environment variable ' + envVarName + ' = ' + envValue);
+                    return envValue;
+                } else {
+                    node.warn('Environment variable [' + envVarName + '] not found, using default [' + (defaultValue || '' + ']'));
+                    return defaultValue; // Restituisce il valore default se la var d'ambiente non esiste
+                }
+            }
+
+            return value; // Restituisce il valore così com'è se non è un template
         }
 
     }

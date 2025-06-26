@@ -1,10 +1,21 @@
 {
+    "files.watcherExclude": {
+        "**/node_modules/**": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/temp": true
+    },
   // abilita subito agent mode nel workspace
   "chat.agent.enabled": true,
   // fa sì che l’agente possa lanciare i task definiti più sotto
   "github.copilot.chat.agent.runTasks": true,
   // per evitare errori di linting su file che non sono javascript o typescript
   "typescript.validate.enable": false,
+  "typescript.preferences.includePackageJsonAutoImports": "off",
   "javascript.validate.enable": false,
+   "javascript.suggest.autoImports": false,
   "eslint.enable": true,  
+  "debug.node.autoAttach": "on",
+  "debug.terminal.clearBeforeReusing": true
 }
