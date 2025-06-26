@@ -32,7 +32,6 @@ function equals(a, b) {
     return false;
 }
 
-
 var MIN_CYCLE_TIME = 50;
 
 var tools = require('../src/tools.js');
