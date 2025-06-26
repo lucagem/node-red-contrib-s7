@@ -161,6 +161,16 @@ module.exports = function (RED) {
         //avoids warnings when we have a lot of S7In nodes
         this.setMaxListeners(0);
 
+        // --- PLC_ENABLED logic ---
+        const plcEnabled = (process.env.PLC_ENABLED || config.plc_enabled || '').toString().toLowerCase();
+        if (plcEnabled === 'false' || plcEnabled === '0') {
+            // Non connettere, non dare errori, status offline
+            if (typeof this.emit === 'function') {
+                this.emit('__STATUS__', { status: 'offline' });
+            }
+            return;
+        }
+
         node.endpoint = null;
         let connOpts;
         let itemGroup;
@@ -169,7 +179,7 @@ module.exports = function (RED) {
         if (transport === 'mpi-s7') {
 
             node.adapter = RED.nodes.getNode(config.adapter);
-            if (!node.adapter) {
+        if (!node.adapter) {
                 return node.error(RED._("s7.error.missingconfig"));
             }
 
@@ -217,13 +227,40 @@ module.exports = function (RED) {
                 default:
                     node.error(RED._("s7.error.invalidconntype", config));
                     return;
-            }
-        } else {
-            node.error(RED._("s7.error.invalidconntype", config));
+                }
+            } else {
+                node.error(RED._("s7.error.invalidconntype", config));
             return;
         }
 
-        node._vars = createTranslationTable(config.vartable);
+        // --- CSV tag table logic ---
+        let vartable = config.vartable;
+        if (config.csvPath) {
+            const fs = require('fs');
+            const path = require('path');
+            const csvPath = path.resolve(config.csvPath);
+            if (fs.existsSync(csvPath)) {
+                try {
+                    const csv = fs.readFileSync(csvPath, 'utf8');
+                    // CSV: name,addr per riga
+                    const lines = csv.split(/\r?\n/).filter(line => line.trim());
+                    const tags = lines.map(line => {
+                        const [name, addr] = line.split(',');
+                        return name && addr ? { name: name.trim(), addr: addr.trim() } : null;
+                    }).filter(Boolean);
+                    if (tags.length) {
+                        vartable = tags;
+                    } else {
+                        node.warn('CSV file provided but no valid tags found. Using config.vartable.');
+                    }
+                } catch (e) {
+                    node.warn('Error reading CSV: ' + e.message + '. Using config.vartable.');
+                }
+            } else {
+                node.warn('CSV file not found: ' + csvPath + '. Using config.vartable.');
+            }
+        }        
+        node._vars = createTranslationTable(vartable);        
 
         node.getStatus = function getStatus() {
             return status;
