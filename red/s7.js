@@ -168,13 +168,13 @@ module.exports = function (RED) {
         const isPLCDisabled = (plcEnabled === 'false' || plcEnabled === '0');
 
         if (isPLCDisabled) {
-            // Crea endpoint fittizio per evitare errori
+            // Create a dummy endpoint to avoid errors
             node.getStatus = function () { return 'offline'; };
             node.writeVar = function (obj) { obj.done(new Error('PLC disabled')); };
             node.updateCycleTime = function () { return 'PLC disabled'; };
             node.doCycle = function () { /* noop */ };
 
-            // Emetti status offline
+            // Emit offline status
             setTimeout(() => {
                 if (typeof node.emit === 'function') {
                     node.emit('__STATUS__', { status: 'offline' });
@@ -431,24 +431,24 @@ module.exports = function (RED) {
             itemGroup.addItems(varKeys);
         }
 
-        // --- Helper function per risolvere variabili d'ambiente ---
+        // --- Helper function to resolve environment variables ---
         function resolveEnvVar(value, defaultValue) {
             if (!value) return value;
 
-            // Se la stringa inizia con { e finisce con }, è una variabile d'ambiente
+            // If the string starts with { and ends with }, it is an environment variable
             if (typeof value === 'string' && value.startsWith('{') && value.endsWith('}')) {
-                const envVarName = value.slice(1, -1); // Rimuove { e }
+                const envVarName = value.slice(1, -1); // Removes { and }
                 const envValue = process.env[envVarName];
                 if (envValue !== undefined) {
                     node.log('Resolved environment variable ' + envVarName + ' = ' + envValue);
                     return envValue;
                 } else {
                     node.warn('Environment variable [' + envVarName + '] not found, using default [' + (defaultValue || '' + ']'));
-                    return defaultValue; // Restituisce il valore default se la var d'ambiente non esiste
+                    return defaultValue; // Returns the default value if the environment variable does not exist
                 }
             }
 
-            return value; // Restituisce il valore così com'è se non è un template
+            return value; // Returns the value as is if it is not a template
         }
 
     }
