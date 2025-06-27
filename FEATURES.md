@@ -1,73 +1,62 @@
-# Enhanced Features for node-red-contrib-s7
+# Documentation for New Features
 
-## New Features Added
+![Dynamic endpoint configuration](./docs/configuration-screenshot.png)
 
-### 1. PLC Connection Control via Environment Variables
+## Additions to S7 endpoint Help section
 
-**Purpose**: Allow dynamic enabling/disabling of PLC connections without modifying flows, useful for development/production environments.
+### Dynamic Configuration Management
 
-**Implementation**:
-- Added `plc_enabled` field to S7 Endpoint configuration
-- Supports both direct values and environment variable templates like {PLC1_ENABLED}
-- When disabled, creates mock endpoint to prevent errors
-- Status shows as "offline" when PLC is disabled
+#### PLC Enabled
+The **PLC Enabled** field allows you to completely disable PLC communication without removing the configuration. This is useful for:
+- Testing flows without a physical PLC available
+- Deploying to different environments with different configurations
+- Temporary communication disabling
 
-**Use Cases**:
-- Mantain the same flows.json on many deploy site even when no PLC S7 is connected
-- Conditional PLC connections based on deployment environment
+Accepted values:
+- Empty or `true`: PLC enabled (default behavior)
+- `false` or `0`: PLC disabled
+- `${S7_ENABLE}` or other: Environment variable
 
-### 2. External CSV Tag Table Loading
+When PLC is disabled:
+- The endpoint remains in "offline" state
+- Write operations fail with "PLC disabled" error
+- No connection attempts are made
 
-**Purpose**: Dynamic load variable definitions from CSV file at Flow start.
+#### CSV File Path
+The **CSV File Path** field allows loading the variable list from an external CSV file instead of the node configuration. This facilitates:
+- Reusing the same configuration across different installations
+- Centralized tag management
+- Synchronization with external configuration systems
 
-**Implementation**:
-- Added `csvPath` field to S7 Endpoint configuration
-- Supports environment variable templates for dynamic paths like {CSV_FILE_PATH}
-- Uses same CSV format as existing import/export functionality
-- CSV format: `address;name` or `address\tname` (tab or semicolon separated)
-- Graceful fallback to manual configuration if CSV fails
-
-**Use Cases**:
-- Mantain the same flows.json file on many deploy site
-- Tag definitions shared across multiple deployments
-- Integration with PLC engineering tools that export CSV
-- Dynamic tag loading based on deployment environment
-
-### 3. Environment Variable Template System for the 2 new parameters
-
-**Format**: `{VARIABLE_NAME}`
-- Any field value wrapped in curly braces is treated as an environment variable reference
-- Example: `{PLC1_ENABLED}` resolves to the value of `process.env.PLC1_ENABLED`
-- Falls back to literal value if environment variable doesn't exist
-
-## Technical Details
-
-### Modified Files:
-- `red/s7.html`: Added UI fields and configuration handling
-- `red/s7.js`: Added logic for PLC control and CSV loading
-
-### Configuration Schema Changes:
-```javascript
-// New fields added to S7 Endpoint defaults:
-plc_enabled: { value: "" },    // PLC enable/disable control
-csvPath: { value: "" }         // Path to external CSV file
+CSV file format:
+```
+address<TAB|;>name
+DB1,REAL0	Temperature_1
+DB1,REAL4	Temperature_2
+MB100	Memory_Byte_100
 ```
 
-### Backward Compatibility:
-- All existing configurations continue to work unchanged
-- New fields are optional with empty defaults
-- No breaking changes to existing API
+The CSV file takes priority over internal configuration. If the file doesn't exist or is empty, the node configuration is used.
 
-## Code Quality:
-- Follows existing code patterns and style
-- Comprehensive error handling with user-friendly warnings
-- Logging for debugging and troubleshooting
-- No external dependencies added
+Accepted values:
+- Absolute path: `C:\config\s7_tags.csv`
+- Relative path: `./config/tags.csv`
+- Environment variable: `${S7_CSV_FILE}` or other
 
-## Testing Scenarios:
-1. PLC enabled with manual tag configuration (existing behavior)
-2. PLC disabled via environment variable
-3. CSV loading with valid file
-4. CSV loading with invalid/missing file (graceful fallback)
-5. Environment variable resolution
-6. Mixed configuration (some env vars, some direct values)
+#### Environment Variables in Connection Parameters
+
+The following parameters now support environment variables:
+
+- **Port**: `102` or `${S7_PORT}` or other
+- **Rack**: `0` or `${S7_RACK}` or other 
+- **Slot**: `2` or `${S7_SLOT}` or other
+
+This allows configuring different environments (development, test, production) using the same flow but with different connection parameters.
+
+### Technical Notes
+
+- Environment variables are automatically resolved by Node-RED
+- CSV loading occurs only at node startup
+- In case of CSV errors, the node configuration is used with a warning message
+- CSV parsing supports TAB (	) and semicolon (;) separators
+- Empty lines in CSV are ignored
