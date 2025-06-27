@@ -162,7 +162,7 @@ module.exports = function (RED) {
         this.setMaxListeners(0);
 
         // --- PLC_ENABLED logic ---
-        const plcEnabled = config.plc_enabled.toString().toLowerCase();
+        const plcEnabled = config.plc_enabled.toString().toLowerCase() || '';
         const isPLCDisabled = (plcEnabled === 'false' || plcEnabled === '0');
 
         if (isPLCDisabled) {
