@@ -452,6 +452,90 @@
 
 	<p>*) Note that strings on the PLC uses 2 extra bytes at start for size/length of the string</p>
 	<p>**) Note that javascript's <code>Date</code> are <i>always</i> represented in UTC. Please use other nodes like <a href="https://flows.nodered.org/node/node-red-contrib-moment" target="_blank">node-red-contrib-moment</a> to properly handle type conversions</p>
+<!-- Dynamic Configuration Management start -->
+
+<h3>Dynamic Configuration Management</h3>
+
+	<h4>PLC Enabled</h4>
+	<p>
+		The <b>PLC Enabled</b> field allows you to completely disable PLC communication without removing the configuration. This is useful for:
+	</p>
+	<ul>
+		<li>Testing flows without a physical PLC available</li>
+		<li>Deploying to different environments with different configurations</li>
+		<li>Temporary communication disabling</li>
+	</ul>
+	<p>Accepted values:</p>
+	<ul>
+		<li>Empty or <code>true</code>: PLC enabled (default behavior)</li>
+		<li><code>false</code> or <code>0</code>: PLC disabled</li>
+		<li><code>${S7_ENABLE}</code>: Environment variable</li>
+	</ul>
+	<p>When PLC is disabled:</p>
+	<ul>
+		<li>The endpoint remains in "offline" state</li>
+		<li>Write operations fail with "PLC disabled" error</li>
+		<li>No connection attempts are made</li>
+	</ul>
+
+	<h4>CSV File Path</h4>
+	<p>
+		The <b>CSV File Path</b> field allows loading the variable list from an external CSV file instead of the node configuration. This facilitates:
+	</p>
+	<ul>
+		<li>Reusing the same configuration across different installations</li>
+		<li>Centralized tag management</li>
+		<li>Synchronization with external configuration systems</li>
+	</ul>
+	<p>CSV file format:</p>
+	<pre><code>address&lt;TAB|;&gt;name
+DB1,REAL0	Temperature_1
+DB1,REAL4	Temperature_2
+MB100	Memory_Byte_100</code></pre>
+	<p>
+		The CSV file takes priority over internal configuration. If the file doesn't exist or is empty, the node configuration is used.
+	</p>
+	<p>Accepted values:</p>
+	<ul>
+		<li>Absolute path: <code>C:\config\s7_tags.csv</code></li>
+		<li>Relative path: <code>./config/tags.csv</code></li>
+		<li>Environment variable: <code>${S7_CSV_FILE}</code></li>
+	</ul>
+
+	<h4>Environment Variables in Connection Parameters</h4>
+	<p>The following parameters now support environment variables:</p>
+	<ul>
+		<li><b>Port</b>: <code>102</code> or <code>${S7_PORT}</code></li>
+		<li><b>Rack</b>: <code>0</code> or <code>${S7_RACK}</code></li>
+		<li><b>Slot</b>: <code>2</code> or <code>${S7_SLOT}</code></li>
+	</ul>
+	<p>
+		This allows configuring different environments (development, test, production) using the same flow but with different connection parameters.
+	</p>
+
+	<h3>Usage Examples</h3>
+	<h4>Sample CSV File</h4>
+	<pre><code>DB1,REAL0	Tank_Level_1
+DB1,REAL4	Tank_Level_2
+DB1,DI8	Production_Counter
+DB1,X12.0	Pump_1_Status
+DB1,X12.1	Pump_2_Status
+DB1,X12.2	Alarm_General
+MB100	System_Mode
+MW102	Recipe_Number
+DB5,STRING10.50	Product_Name</code></pre>
+
+	<h3>Technical Notes</h3>
+	<ul>
+		<li>Environment variables are automatically resolved by Node-RED</li>
+		<li>CSV loading occurs only at node startup</li>
+		<li>In case of CSV errors, the node configuration is used with a warning message</li>
+		<li>CSV parsing supports TAB (	) and semicolon (;) separators</li>
+		<li>Empty lines in CSV are ignored</li>
+	</ul>
+	
+<!-- Dynamic Configuration Management END -->
+	
 </script>
 
 <script type="text/javascript">
@@ -559,21 +643,21 @@
 			},
 			port: {
 				value: "102",
-				    validate: function(v) { 
+				validate: function (v) {
 					// Allow environment variables like ${VAR_NAME} or numbers
 					return /^(\$\{[A-Z_][A-Z0-9_]*\}|\d+)$/i.test(v) || v === "";
 				}
 			},
 			rack: {
 				value: "0",
-				    validate: function(v) { 
+				validate: function (v) {
 					// Allow environment variables like ${VAR_NAME} or numbers
 					return /^(\$\{[A-Z_][A-Z0-9_]*\}|\d+)$/i.test(v) || v === "";
 				}
 			},
 			slot: {
 				value: "2",
-				    validate: function(v) { 
+				validate: function (v) {
 					// Allow environment variables like ${VAR_NAME} or numbers
 					return /^(\$\{[A-Z_][A-Z0-9_]*\}|\d+)$/i.test(v) || v === "";
 				}
