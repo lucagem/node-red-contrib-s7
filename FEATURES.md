@@ -8,22 +8,25 @@ The image above shows the enhanced S7 endpoint configuration interface with numb
 
 ### 1. Address Field (Existing)
 Standard IP address configuration for the PLC connection. This field was already functional and no modifications were made.
+- Fixed value eg: `10.0.0.102`
+- Environment variable: `${S7_IP}`
+- Custom environment variable: `${YOUR_PORT_VAR}`
 
 ### 2. Port Field (Enhanced)
 **Enhanced with environment variable support:**
-- Standard value: `102`
+- Fixed value default: `102`
 - Environment variable: `${S7_PORT}`
 - Custom environment variable: `${YOUR_PORT_VAR}`
 
 ### 3. Rack Field (Enhanced) 
 **Enhanced with environment variable support:**
-- Standard value: `0`
+- Fixed value default: `0`
 - Environment variable: `${S7_RACK}`
 - Custom environment variable: `${YOUR_RACK_VAR}`
 
 ### 4. Slot Field (Enhanced)
 **Enhanced with environment variable support:**
-- Standard value: `2` 
+- Fixed value default: `2` 
 - Environment variable: `${S7_SLOT}`
 - Custom environment variable: `${YOUR_SLOT_VAR}`
 
