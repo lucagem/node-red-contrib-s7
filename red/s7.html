@@ -21,7 +21,7 @@
 					<label for="node-config-input-address"><i class="fa fa-globe"></i> <span data-i18n="s7.endpoint.label.address"></span></label>
 					<input class="input-append-left" type="text" id="node-config-input-address" data-i18n="[placeholder]s7.endpoint.placeholder.address" style="width: 40%;">
 					<label for="node-config-input-port" style="margin-left: 10px; width: auto; "> <span data-i18n="s7.endpoint.label.port"></span></label>
-					<input type="text" id="node-config-input-port" placeholder="102 or env_var like ${PLC_PORT}" style="width: 120px; margin-right: 10px;">					<a id="node-config-lookup-plc-pn" class="btn red-ui-button disabled" data-i18n="[title]s7.endpoint.label.search"><i class="fa fa-search"></i></a>
+					<input type="text" id="node-config-input-port" placeholder="102 or env_var like ${S7_PORT}" style="width: 120px; margin-right: 10px;">					<a id="node-config-lookup-plc-pn" class="btn red-ui-button disabled" data-i18n="[title]s7.endpoint.label.search"><i class="fa fa-search"></i></a>
 					<a id="node-config-flash-plc-pn" class="btn red-ui-button disabled" data-i18n="[title]s7.endpoint.label.flash-led"><i class="fa fa-lightbulb-o"></i></a>
 				</div>
 				<div class="form-row">
@@ -33,9 +33,9 @@
 				</div>
 				<div class="form-row" id="node-config-s7-endpoint-mode-rackslot">
 					<label for="node-config-input-rack"><i class="fa fa-sitemap"></i> <span data-i18n="s7.endpoint.label.rack"></span></label>
-					<input class="input-append-left" type="text" id="node-config-input-rack" placeholder="0 or env_var like ${PLC_RACK}" style="width: 120px">
+					<input class="input-append-left" type="text" id="node-config-input-rack" placeholder="0 or env_var like ${S7_RACK}" style="width: 120px">
 					<label for="node-config-input-slot" style="margin-left: 10px; width: 35px; "> <span data-i18n="s7.endpoint.label.slot"></span></label>
-					<input type="text" id="node-config-input-slot" placeholder="2 or env_var like ${PLC_SLOT}" style="width: 120px">
+					<input type="text" id="node-config-input-slot" placeholder="2 or env_var like ${S7_SLOT}" style="width: 120px">
 				</div>
 				<div class="form-row" id="node-config-s7-endpoint-mode-tsap">
 					<label for="node-config-input-localtsaphi"><i class="fa fa-exchange"></i> <span data-i18n="s7.endpoint.label.tsap-local"></span></label>
