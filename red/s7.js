@@ -162,8 +162,7 @@ module.exports = function (RED) {
         this.setMaxListeners(0);
 
         // --- PLC_ENABLED logic ---
-        const resolvedPlcEnabled = resolveEnvVar(config.plc_enabled, true) || '';
-        const plcEnabled = resolvedPlcEnabled.toString().toLowerCase();
+        const plcEnabled = config.plc_enabled.toString().toLowerCase();
         const isPLCDisabled = (plcEnabled === 'false' || plcEnabled === '0');
 
         if (isPLCDisabled) {
@@ -246,12 +245,11 @@ module.exports = function (RED) {
 
         // --- CSV tag table logic ---
         let vartable = config.vartable;
-        const resolvedCsvPath = resolveEnvVar(config.csvPath, '');
 
-        if (resolvedCsvPath) {
+        if (config.csvPath) {
             const fs = require('fs');
             const path = require('path');
-            const csvPath = path.resolve(resolvedCsvPath);
+            const csvPath = path.resolve(config.csvPath);
 
             node.log('Attempting to load CSV from resolved path: ' + csvPath);
 
@@ -429,27 +427,6 @@ module.exports = function (RED) {
         } else {
             itemGroup.addItems(varKeys);
         }
-
-        // --- Helper function to resolve environment variables ---
-        function resolveEnvVar(value, defaultValue) {
-            if (!value) return value;
-
-            // If the string starts with { and ends with }, it is an environment variable
-            if (typeof value === 'string' && value.startsWith('{') && value.endsWith('}')) {
-                const envVarName = value.slice(1, -1); // Removes { and }
-                const envValue = process.env[envVarName];
-                if (envValue !== undefined) {
-                    node.log('Resolved environment variable ' + envVarName + ' = ' + envValue);
-                    return envValue;
-                } else {
-                    node.warn('Environment variable [' + envVarName + '] not found, using default [' + (defaultValue || '' + ']'));
-                    return defaultValue; // Returns the default value if the environment variable does not exist
-                }
-            }
-
-            return value; // Returns the value as is if it is not a template
-        }
-
     }
     RED.nodes.registerType("s7 endpoint", S7Endpoint);
 

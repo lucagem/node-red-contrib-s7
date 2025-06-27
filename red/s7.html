@@ -21,8 +21,7 @@
 					<label for="node-config-input-address"><i class="fa fa-globe"></i> <span data-i18n="s7.endpoint.label.address"></span></label>
 					<input class="input-append-left" type="text" id="node-config-input-address" data-i18n="[placeholder]s7.endpoint.placeholder.address" style="width: 40%;">
 					<label for="node-config-input-port" style="margin-left: 10px; width: auto; "> <span data-i18n="s7.endpoint.label.port"></span></label>
-					<input type="text" id="node-config-input-port" data-i18n="[placeholder]s7.endpoint.label.port" style="width: 50px; margin-right: 10px;">
-					<a id="node-config-lookup-plc-pn" class="btn red-ui-button disabled" data-i18n="[title]s7.endpoint.label.search"><i class="fa fa-search"></i></a>
+					<input type="text" id="node-config-input-port" placeholder="102 or env_var like ${PLC_PORT}" style="width: 120px; margin-right: 10px;">					<a id="node-config-lookup-plc-pn" class="btn red-ui-button disabled" data-i18n="[title]s7.endpoint.label.search"><i class="fa fa-search"></i></a>
 					<a id="node-config-flash-plc-pn" class="btn red-ui-button disabled" data-i18n="[title]s7.endpoint.label.flash-led"><i class="fa fa-lightbulb-o"></i></a>
 				</div>
 				<div class="form-row">
@@ -34,9 +33,9 @@
 				</div>
 				<div class="form-row" id="node-config-s7-endpoint-mode-rackslot">
 					<label for="node-config-input-rack"><i class="fa fa-sitemap"></i> <span data-i18n="s7.endpoint.label.rack"></span></label>
-					<input class="input-append-left" type="text" id="node-config-input-rack" data-i18n="[placeholder]s7.endpoint.label.rack" style="width: 50px">
+					<input class="input-append-left" type="text" id="node-config-input-rack" placeholder="0 or env_var like ${PLC_RACK}" style="width: 120px">
 					<label for="node-config-input-slot" style="margin-left: 10px; width: 35px; "> <span data-i18n="s7.endpoint.label.slot"></span></label>
-					<input type="text" id="node-config-input-slot" data-i18n="[placeholder]s7.endpoint.label.slot" style="width:50px">
+					<input type="text" id="node-config-input-slot" placeholder="2 or env_var like ${PLC_SLOT}" style="width: 120px">
 				</div>
 				<div class="form-row" id="node-config-s7-endpoint-mode-tsap">
 					<label for="node-config-input-localtsaphi"><i class="fa fa-exchange"></i> <span data-i18n="s7.endpoint.label.tsap-local"></span></label>
@@ -560,15 +559,24 @@
 			},
 			port: {
 				value: "102",
-				validate: RED.validators.number()
+				    validate: function(v) { 
+					// Allow environment variables like ${VAR_NAME} or numbers
+					return /^(\$\{[A-Z_][A-Z0-9_]*\}|\d+)$/i.test(v) || v === "";
+				}
 			},
 			rack: {
 				value: "0",
-				validate: RED.validators.number()
+				    validate: function(v) { 
+					// Allow environment variables like ${VAR_NAME} or numbers
+					return /^(\$\{[A-Z_][A-Z0-9_]*\}|\d+)$/i.test(v) || v === "";
+				}
 			},
 			slot: {
 				value: "2",
-				validate: RED.validators.number()
+				    validate: function(v) { 
+					// Allow environment variables like ${VAR_NAME} or numbers
+					return /^(\$\{[A-Z_][A-Z0-9_]*\}|\d+)$/i.test(v) || v === "";
+				}
 			},
 			localtsaphi: {
 				value: "01",
@@ -624,10 +632,13 @@
 			if (this.name) {
 				return this.name
 			} else if (this.transport == "iso-on-tcp") {
-				return this.address + ":" + this.port + "@" + (
+				var displayPort = this.port || "102";
+				var displayRack = this.rack || "0";
+				var displaySlot = this.slot || "2";
+				return this.address + ":" + displayPort + "@" + (
 					this.connmode == 'tsap' ?
 						(this.localtsaphi + "." + this.localtsaplo + "/" + this.remotetsaphi + "." + this.remotetsaplo) :
-						(this.rack + ":" + this.slot))
+						(displayRack + ":" + displaySlot))
 			} else if (this.transport == "mpi-s7") {
 				var adapterNode = RED.nodes.node(this.adapter);
 				if (adapterNode) {
@@ -914,7 +925,7 @@
 			if (self.csvPath !== undefined) {
 				$("#node-config-input-csv-path").val(self.csvPath);
 			}
-			
+
 			connTypeList.change(function () {
 				if (connTypeList.val() == "rack-slot") {
 					rackSlotRow.show();
