@@ -67,10 +67,18 @@
                     "addr": "Address",
                     "export": "Export",
                     "import": "Import"
-                }
+                },
+                "plc_enabled": "PLC Enabled",
+                "json_path": "JSON File Path",
+                "plc_key": "PLC Key",
+                "csv_path": "CSV File Path"
             },
             "placeholder": {
-                "address": "IP Address or FQDN (plc01.example.com)"
+                "address": "IP Address or FQDN (plc01.example.com)",
+                "plc_enabled": "(optional) false/0 or env var like ${S7_ENABLE}",
+                "json_path": "(optional) GI4-INFO json or env var like ${GI4_INFO_JSON}",
+                "plc_key": "(optional) plcKey in the json, empty = primary PLC, or ${S7_PLC_KEY}",
+                "csv_path": "(optional) address;name file or env var like ${S7_CSV_FILE}"
             },
             "transport": {
                 "iso-on-tcp": "Ethernet (ISO-on-TCP)",

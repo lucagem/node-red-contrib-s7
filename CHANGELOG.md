@@ -1,3 +1,12 @@
+Version: 3.2.0 (GEM)
+------------
+ - Endpoint: new `jsonPath` + `plcKey` fields, variables loaded from the GI4-INFO machine JSON, one JSON can describe several S7 PLCs (`plcs[]` + `tags[].plcKey`); priority JSON > CSV > editor list (loader at module level in red/s7.js, exposed as `module.exports.tagSource` for tests: installations copy only s7.js/s7.html over the npm package)
+ - Endpoint: unresolved `${VAR}` treated as empty: no address -> endpoint disabled, port/rack/slot -> nodes7 defaults (was NaN -> slot 0)
+ - Endpoint: an invalid address skips only that variable instead of breaking the endpoint
+ - Endpoint: `plc_enabled` missing no longer throws; disabled endpoint has an empty variable table (s7 out no longer throws a TypeError)
+ - Endpoint: close handler clears the read timer and always calls done
+ - Editor: empty variable row accepted when variables come from JSON/CSV; placeholders use the `${VAR}` syntax; i18n keys for the GEM fields
+
 Version: 3.0.0
 ------------
  - Migrate underlying library to @st-one-io/node-s7

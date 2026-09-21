@@ -67,10 +67,18 @@
                     "addr": "Adresse",
                     "export": "Export",
                     "import": "Import"
-                }
+                },
+                "plc_enabled": "SPS aktiv",
+                "json_path": "JSON Datei",
+                "plc_key": "SPS Schlüssel",
+                "csv_path": "CSV Datei"
             },
             "placeholder": {
-                "address": "IP Adresse oder FQDN (plc01.example.com)"
+                "address": "IP Adresse oder FQDN (plc01.example.com)",
+                "plc_enabled": "(optional) false/0 oder Umgebungsvariable ${S7_ENABLE}",
+                "json_path": "(optional) GI4-INFO json oder ${GI4_INFO_JSON}",
+                "plc_key": "(optional) plcKey im json, leer = primäre SPS, oder ${S7_PLC_KEY}",
+                "csv_path": "(optional) Datei Adresse;Name oder ${S7_CSV_FILE}"
             },
             "transport": {
                 "iso-on-tcp": "Ethernet (ISO-on-TCP)",

@@ -71,11 +71,19 @@
 			</div>
 			<div class="form-row">
                 <label for="node-config-input-plc-enabled"><i class="fa fa-power-off"></i> <span data-i18n="s7.endpoint.label.plc_enabled">PLC Enabled</span></label>
-                <input type="text" id="node-config-input-plc-enabled" data-i18n="[placeholder]s7.endpoint.placeholder.plc_enabled" placeholder="(optional) use false or env_var like {S7_ENABLE}">
+                <input type="text" id="node-config-input-plc-enabled" data-i18n="[placeholder]s7.endpoint.placeholder.plc_enabled" placeholder="(optional) false/0 or env var like ${S7_ENABLE}">
             </div>
             <div class="form-row">
-                <label for="node-config-input-csv-path"><i class="fa fa-file-csv"></i> <span data-i18n="s7.endpoint.label.csv_path">CSV File Path</span></label>
-                <input type="text" id="node-config-input-csv-path" data-i18n="[placeholder]s7.endpoint.placeholder.csv_path" placeholder="(optional path/filename) or env_var like {S7_CSV_FILE}">
+                <label for="node-config-input-jsonPath"><i class="fa fa-file-code-o"></i> <span data-i18n="s7.endpoint.label.json_path">JSON File Path</span></label>
+                <input type="text" id="node-config-input-jsonPath" data-i18n="[placeholder]s7.endpoint.placeholder.json_path" placeholder="(optional) GI4-INFO json or env var like ${GI4_INFO_JSON}">
+            </div>
+            <div class="form-row">
+                <label for="node-config-input-plcKey"><i class="fa fa-key"></i> <span data-i18n="s7.endpoint.label.plc_key">PLC Key</span></label>
+                <input type="text" id="node-config-input-plcKey" data-i18n="[placeholder]s7.endpoint.placeholder.plc_key" placeholder="(optional) plcKey in the json, empty = primary PLC, or ${S7_PLC_KEY}">
+            </div>
+            <div class="form-row">
+                <label for="node-config-input-csv-path"><i class="fa fa-file-text-o"></i> <span data-i18n="s7.endpoint.label.csv_path">CSV File Path</span></label>
+                <input type="text" id="node-config-input-csv-path" data-i18n="[placeholder]s7.endpoint.placeholder.csv_path" placeholder="(optional) address;name file or env var like ${S7_CSV_FILE}">
             </div>
 		</div>
 		<div id="s7-endpoint-tab-variables" style="display:none">
@@ -616,6 +624,8 @@ DB5,STRING10.50	Product_Name</code></pre>
 	function validateAddressList(list) {
 		for (var i = 0; i < list.length; i++) {
 			var elm = list[i];
+			// riga vuota (default dell'editor): lecita quando le variabili arrivano da file JSON/CSV
+			if (!elm.name && !elm.addr) continue;
 			if (!elm.name) return false;
 			if (validateS7Address(elm.addr)) return false;
 		}
@@ -709,6 +719,12 @@ DB5,STRING10.50	Product_Name</code></pre>
 				value: ""
 			},
 			csvPath: {
+				value: ""
+			},
+			jsonPath: {
+				value: ""
+			},
+			plcKey: {
 				value: ""
 			}
 		},

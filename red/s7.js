@@ -35,6 +35,144 @@ function equals(a, b) {
 var MIN_CYCLE_TIME = 50;
 
 var tools = require('../src/tools.js');
+var fs = require('fs');
+var path = require('path');
+// ---------- GEM: external variable table (JSON GI4-INFO / CSV) ----------
+/*
+  GEM srl - caricamento della tabella variabili dell'endpoint da file esterno.
+  Precedenza: JSON di GI4-INFO (jsonPath) > CSV (csvPath) > tabella dell'editor (vartable).
+
+  JSON GI4-INFO (schemaVersion 3.x): tags[] con tagAdr/tagName/tagEnable, sezione opzionale
+  plcs:[{key,name,type,primary}] e campo opzionale tags[].plcKey.
+  Regola di appartenenza (identica nel collector gi4-collector, bolla gi4InfoJsonToTagIOT):
+    plcKey della tag vuoto/assente -> PLC primario = plcs[] con primary:true, altrimenti plcs[0].key, altrimenti "PLC1".
+  L'endpoint carica le tag del PLC indicato in plcKey (vuoto = PLC primario).
+*/
+
+/**
+ * true se il valore e' una stringa valorizzata e non un "${VAR}" rimasto non risolto
+ * (Node-RED lascia il testo letterale quando la variabile d'ambiente non esiste)
+ * @param {any} v
+ */
+function isSet(v) {
+    if (v === undefined || v === null) return false;
+    const s = String(v).trim();
+    return s.length > 0 && !/^\$\{.*\}$/.test(s);
+}
+
+/**
+ * @param {any} doc JSON GI4-INFO gia' parsato
+ * @returns {string} chiave del PLC primario
+ */
+function primaryPlcKey(doc) {
+    const plcs = (doc && Array.isArray(doc.plcs)) ? doc.plcs.filter(p => p && isSet(p.key)) : [];
+    const primary = plcs.find(p => p.primary === true) || plcs[0];
+    return primary ? String(primary.key).trim() : 'PLC1';
+}
+
+/**
+ * @param {any} doc JSON GI4-INFO gia' parsato
+ * @param {string} [plcKey] PLC da caricare (vuoto = primario)
+ * @returns {{vars: Array<{addr:string,name:string}>, plcKey: string, skipped: number}}
+ */
+function tagsFromGi4InfoDoc(doc, plcKey) {
+    if (!doc || typeof doc !== 'object' || !Array.isArray(doc.tags)) {
+        throw new Error('manca l\'array tags[]');
+    }
+    const primary = primaryPlcKey(doc);
+    const wanted = isSet(plcKey) ? String(plcKey).trim() : primary;
+    const vars = [];
+    let skipped = 0;
+    for (const t of doc.tags) {
+        if (!t) continue;
+        const tagPlc = isSet(t.plcKey) ? String(t.plcKey).trim() : primary;
+        if (tagPlc !== wanted) continue;
+        if (t.tagEnable === false || t.tagEnable === 0 || t.tagEnable === '0') {
+            skipped++;
+            continue;
+        }
+        if (!isSet(t.tagAdr) || !isSet(t.tagName)) {
+            // tag senza indirizzo: calcolata dal collector, non sta sul PLC
+            continue;
+        }
+        vars.push({ addr: String(t.tagAdr).trim().toUpperCase(), name: String(t.tagName).trim() });
+    }
+    return { vars, plcKey: wanted, skipped };
+}
+
+/**
+ * toglie l'eventuale BOM UTF-8 iniziale (file salvati da Excel/Notepad)
+ * @param {string} text
+ */
+function stripBom(text) {
+    return (text.charCodeAt(0) === 0xFEFF) ? text.slice(1) : text;
+}
+
+/**
+ * @param {string} contents file "indirizzo;nome" (separatore ; o tab)
+ * @param {(msg:string)=>void} [onBadLine]
+ * @returns {Array<{addr:string,name:string}>}
+ */
+function tagsFromCsvText(contents, onBadLine) {
+    const res = [];
+    const lines = stripBom(contents).split(/[\r\n]+/);
+    for (let line of lines) {
+        line = line.trim();
+        if (line === '') continue;
+        const fields = line.split(/[\t;]/);
+        if (fields.length < 2 || !fields[0].trim() || !fields[1].trim()) {
+            if (onBadLine) onBadLine(line);
+            continue;
+        }
+        res.push({ addr: fields[0].trim(), name: fields[1].trim() });
+    }
+    return res;
+}
+
+/**
+ * Sceglie la sorgente e carica le variabili. Non lancia: gli errori finiscono in log.error
+ * e si passa alla sorgente successiva.
+ * @param {{jsonPath?:string, plcKey?:string, csvPath?:string, vartable?:Array<{addr:string,name:string}>}} config
+ * @param {{log:(m:string)=>void, error:(m:string)=>void, warn:(m:string)=>void}} log
+ * @returns {{vars: Array<{addr:string,name:string}>, source: string}}
+ */
+function loadVarTable(config, log) {
+    if (isSet(config.jsonPath)) {
+        const jsonPath = path.resolve(String(config.jsonPath).trim());
+        try {
+            const doc = JSON.parse(stripBom(fs.readFileSync(jsonPath, 'utf8')));
+            const r = tagsFromGi4InfoDoc(doc, config.plcKey);
+            if (r.vars.length) {
+                log.log(`Loaded ${r.vars.length} variables of PLC [${r.plcKey}] from JSON: ${jsonPath}` + (r.skipped ? ` (${r.skipped} disabled)` : ''));
+                return { vars: r.vars, source: 'json' };
+            }
+            log.error(`JSON ${jsonPath}: no tags with address for PLC [${r.plcKey}]. Trying CSV / editor table.`);
+        } catch (e) {
+            log.error(`Error reading JSON ${jsonPath}: ${e.message}. Trying CSV / editor table.`);
+        }
+    }
+    if (isSet(config.csvPath)) {
+        const csvPath = path.resolve(String(config.csvPath).trim());
+        if (fs.existsSync(csvPath)) {
+            try {
+                const res = tagsFromCsvText(fs.readFileSync(csvPath, 'utf8'),
+                    line => log.error('CSV line must have at least two parameters, address and name. Skipping line: ' + line));
+                if (res.length) {
+                    log.log('Loaded ' + res.length + ' variables from CSV: ' + csvPath);
+                    return { vars: res, source: 'csv' };
+                }
+                log.error('CSV file provided but no valid tags found. Using config.vartable.');
+            } catch (e) {
+                log.error('Error reading CSV: ' + e.message + '. Using config.vartable.');
+            }
+        } else {
+            log.error('CSV file not found: ' + csvPath + '. Using config.vartable.');
+        }
+    }
+    return { vars: Array.isArray(config.vartable) ? config.vartable : [], source: 'editor' };
+}
+
+var tagSource = { isSet, primaryPlcKey, tagsFromGi4InfoDoc, tagsFromCsvText, loadVarTable };
 
 module.exports = function (RED) {
     "use strict";
@@ -162,11 +300,19 @@ module.exports = function (RED) {
         this.setMaxListeners(0);
 
         // --- PLC_ENABLED logic ---
-        const plcEnabled = config.plc_enabled.toString().toLowerCase() || '';
-        const isPLCDisabled = (plcEnabled === 'false' || plcEnabled === '0');
+        // plc_enabled puo' mancare (flow creati prima della modifica GEM): in quel caso il PLC e' abilitato
+        const plcEnabled = String(config.plc_enabled == null ? '' : config.plc_enabled).trim().toLowerCase();
+        let isPLCDisabled = (plcEnabled === 'false' || plcEnabled === '0');
+        // senza indirizzo (o con "${VAR}" non risolta, es. slot di un secondo PLC non configurato) non ci si connette
+        if (!isPLCDisabled && transport === 'iso-on-tcp' && !tagSource.isSet(config.address)) {
+            isPLCDisabled = true;
+            // messaggi GEM in chiaro: in campo si copiano solo s7.js/s7.html sul pacchetto npm, senza i locales
+            node.warn('No PLC address ("' + String(config.address == null ? '' : config.address) + '"): endpoint disabled', {});
+        }
 
         if (isPLCDisabled) {
             // Create a dummy endpoint to avoid errors
+            node._vars = {};
             node.getStatus = function () { return 'offline'; };
             node.writeVar = function (obj) { obj.done(new Error('PLC disabled')); };
             node.updateCycleTime = function () { return 'PLC disabled'; };
@@ -202,13 +348,24 @@ module.exports = function (RED) {
 
         } else if (transport === 'iso-on-tcp') {
 
+            // "${VAR}" non risolta o valore non numerico -> undefined (nodes7 usa i default port 102, rack 0, slot 2)
+            // invece di NaN, che nodes7 trasformava in silenzio in rack 0 / slot 0
+            const toNum = (label, v) => {
+                if (!tagSource.isSet(v)) return undefined;
+                const n = Number(String(v).trim());
+                if (isNaN(n)) {
+                    node.warn('Invalid ' + label + ' "' + String(v) + '", using default', {});
+                    return undefined;
+                }
+                return n;
+            };
             switch (config.connmode) {
                 case "rack-slot":
                     connOpts = {
                         host: config.address,
-                        port: Number(config.port),
-                        rack: Number(config.rack),
-                        slot: Number(config.slot),
+                        port: toNum('port', config.port),
+                        rack: toNum('rack', config.rack),
+                        slot: toNum('slot', config.slot),
                         s7ConnOpts: s7ConnOpts
                     }
                     break;
@@ -243,57 +400,18 @@ module.exports = function (RED) {
             return;
         }
 
-        // --- CSV tag table logic ---
-        let vartable = config.vartable;
-
-        if (config.csvPath) {
-            const fs = require('fs');
-            const path = require('path');
-            const csvPath = path.resolve(config.csvPath);
-
-            node.log('Attempting to load CSV from resolved path: ' + csvPath);
-
-            if (fs.existsSync(csvPath)) {
-                try {
-                    const contents = fs.readFileSync(csvPath, 'utf8');
-                    const lines = contents.split(/[\r\n]+/);
-
-                    if (!lines.length) {
-                        node.error('CSV file is empty. Using config.vartable.');
-                    } else {
-                        var res = [], i, fields;
-
-                        for (i = 0; i < lines.length; i++) {
-                            lines[i] = lines[i].trim();
-                            if (lines[i] == '') continue;
-
-                            fields = lines[i].split(/[\t;]/);
-
-                            if (fields.length < 2) {
-                                node.error('CSV line must have at least two parameters, address and name. Skipping line: ' + lines[i]);
-                                continue;
-                            }
-                            res.push({
-                                addr: fields[0],
-                                name: fields[1]
-                            });
-                        }
-
-                        if (res.length) {
-                            vartable = res;
-                            node.log('Loaded ' + res.length + ' variables from CSV: ' + csvPath);
-                        } else {
-                            node.error('CSV file provided but no valid tags found. Using config.vartable.');
-                        }
-                    }
-                } catch (e) {
-                    node.error('Error reading CSV: ' + e.message + '. Using config.vartable.');
-                }
-            } else {
-                node.error('CSV file not found: ' + csvPath + '. Using config.vartable.');
-            }
-        }
-        node._vars = createTranslationTable(vartable);
+        // --- external tag table: JSON GI4-INFO (jsonPath + plcKey) > CSV (csvPath) > config.vartable ---
+        const varTable = tagSource.loadVarTable({
+            jsonPath: config.jsonPath,
+            plcKey: config.plcKey,
+            csvPath: config.csvPath,
+            vartable: config.vartable
+        }, {
+            log: m => node.log(m),
+            error: m => node.error(m),
+            warn: m => node.warn(m)
+        });
+        node._vars = createTranslationTable(varTable.vars);
 
         node.getStatus = function getStatus() {
             return status;
@@ -398,11 +516,13 @@ module.exports = function (RED) {
         }
 
         node.on('close', done => {
+            clearInterval(node._td);
             manageStatus('offline');
-            if (!node.endpoint) done();
+            if (!node.endpoint) return done();
 
-            node.endpoint.disconnect().then(done).catch(e => {
+            node.endpoint.disconnect().then(() => done()).catch(e => {
                 node.error(e);
+                done();
             });
         });
 
@@ -425,7 +545,15 @@ module.exports = function (RED) {
             node.warn(RED._("s7.info.novars"), {});
             return;
         } else {
-            itemGroup.addItems(varKeys);
+            // uno alla volta: un indirizzo non valido scarta solo quella variabile invece di abbattere l'endpoint
+            varKeys.forEach(k => {
+                try {
+                    itemGroup.addItems(k);
+                } catch (e) {
+                    node.error('Invalid address ' + node._vars[k] + ' for variable ' + k + ', variable skipped: ' + (e && e.message), {});
+                    delete node._vars[k];
+                }
+            });
         }
     }
     RED.nodes.registerType("s7 endpoint", S7Endpoint);
@@ -691,3 +819,6 @@ module.exports = function (RED) {
     }
     RED.nodes.registerType("s7 control", S7Control);
 };
+
+// helper GEM esposti per i test fuori da Node-RED
+module.exports.tagSource = tagSource;
