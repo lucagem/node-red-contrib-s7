@@ -291,10 +291,24 @@ module.exports = function (RED) {
         var readInProgress = false;
         var readDeferred = 0;
         var connected = false;
-        var currentCycleTime = config.cycletime;
         var transport = config.transport || 'iso-on-tcp';
 
         RED.nodes.createNode(this, config);
+
+        // override GEM di cycletime/timeout (campi testo, accettano "${VAR}"): se valorizzati e numerici
+        // vincono sui campi numerici standard, altrimenti restano questi ultimi
+        const numOverride = (label, v, fallback) => {
+            if (!tagSource.isSet(v)) return fallback;
+            const n = parseInt(String(v).trim(), 10);
+            if (isNaN(n) || n < 0) {
+                node.warn('Invalid ' + label + ' override "' + String(v) + '", using ' + fallback, {});
+                return fallback;
+            }
+            node.log(label + ' override: ' + n + ' ms');
+            return n;
+        };
+        var currentCycleTime = numOverride('cycle time', config.cycletimeEnv, config.cycletime);
+        const connTimeout = numOverride('timeout', config.timeoutEnv, config.timeout);
 
         //avoids warnings when we have a lot of S7In nodes
         this.setMaxListeners(0);
@@ -330,7 +344,7 @@ module.exports = function (RED) {
         node.endpoint = null;
         let connOpts;
         let itemGroup;
-        let s7ConnOpts = { timeout: parseInt(config.timeout) }
+        let s7ConnOpts = { timeout: parseInt(connTimeout) }
 
         if (transport === 'mpi-s7') {
 
